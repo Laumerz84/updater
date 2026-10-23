@@ -70,7 +70,7 @@ class Installer:
         top.pack(fill="x")
         ttk.Label(top, text="Installs the GitHub Updater and the recommended programs.",
                   font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        ttk.Label(top, text="App Launcher · UtilityBelt · UI Report Tool · Ekxel · Codebase Dashboard, "
+        ttk.Label(top, text="App Launcher · UtilityBelt · UI Report Tool · Ekxel · Codebase Dashboard · Clipper, "
                             "plus a daily update check.").pack(anchor="w", pady=(2, 8))
         row = ttk.Frame(top)
         row.pack(fill="x")

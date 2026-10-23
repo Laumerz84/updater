@@ -47,8 +47,8 @@ To hand it to someone else's Claude Code, give them this:
 
 ## The recommended programs
 
-Listed in `catalog.json` (the App Launcher, this Updater, UtilityBelt, UI Report Tool, Ekxel and
-Codebase Dashboard). The window's **Recommended programs** list shows each one as installed, not
+Listed in `catalog.json` (the App Launcher, this Updater, UtilityBelt, UI Report Tool, Ekxel,
+Codebase Dashboard, Clipper). The window's **Recommended programs** list shows each one as installed, not
 installed, or installed without an App Launcher card, with an **Install** or **Add card** button.
 Below it, your other GitHub clones are listed by whether they have an App Launcher card.
 Existing cards are never replaced. Because the catalog is part of this repo, a new recommendation

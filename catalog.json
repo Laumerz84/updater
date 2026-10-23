@@ -57,6 +57,15 @@
       "folder": "codebase-dashboard",
       "about": "Code stats and git activity for a folder, in your browser.",
       "launcher": "dashboard_entry"
+    },
+    {
+      "name": "Clipper",
+      "repo": "https://github.com/Laumerz84/clipper.git",
+      "folder": "Clipper",
+      "about": "Instant replay: a hotkey saves the last minute of your game (AMD graphics cards).",
+      "setup": "venv",
+      "doctor": "setup_ffmpeg.py",
+      "launcher": "clipper_entry"
     }
   ]
 }
