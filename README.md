@@ -11,6 +11,14 @@ tracked files, or with commits that were never pushed, is shown as blocked and l
 an update, a changed `requirements.txt` is reinstalled with pip, and a locally built `dist\*.exe`
 is rebuilt if its box is ticked.
 
+## One click on a fresh PC
+
+Download [`Install.pyw`](https://github.com/Laumerz84/updater/raw/main/Install.pyw), double-click it
+and press **Install**. It needs only Python 3.11+ (from python.org) on the PC; if Git is missing it
+offers to install it (winget) or opens the download page. It puts the Updater in
+`%USERPROFILE%\Python` (or a folder you pick), then runs `install.py` below and shows its progress
+in the window. It is a `.pyw` rather than a `.cmd`/`.bat` because many work PCs block those.
+
 ## Install everything (or have Claude do it)
 
 Needs Windows, Python 3.11+ and Git. Clone this repo into the folder that holds your projects,
