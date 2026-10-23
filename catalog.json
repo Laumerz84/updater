@@ -1,0 +1,62 @@
+{
+  "_help": {
+    "programs": "The recommended programs, in install order. setup.py installs every one that is missing; the Updater window lists them with an Install button.",
+    "repo": "Where to clone it from. A clone counts as this program when its origin is this URL, wherever the folder is.",
+    "folder": "Folder name for a new clone, next to the Updater's folder.",
+    "setup": "'venv': make .venv in its folder and pip install requirements.txt into it. 'pip': pip install requirements.txt into this Python. Empty: nothing to set up.",
+    "doctor": "Optional script, run with the program's Python after setup; a non-zero exit is reported as a problem.",
+    "launcher": "The function in the App Launcher's add_companions.py that makes its card. Empty: no card.",
+    "start_menu": "Optional Start menu shortcut: name, script (run with pythonw), icon, and stamp (python args run in its folder with the .lnk path added).",
+    "role": "'launcher' marks the App Launcher, whose apps.json holds the cards."
+  },
+  "programs": [
+    {
+      "name": "App Launcher",
+      "repo": "https://github.com/Laumerz84/app-launcher.git",
+      "folder": "app-launcher",
+      "about": "Start and stop your tools from one small window.",
+      "role": "launcher",
+      "start_menu": {"name": "App Launcher", "script": "launcher.pyw", "icon": "launcher.ico",
+                     "stamp": ["-m", "applauncher.aumid", "set"]}
+    },
+    {
+      "name": "GitHub Updater",
+      "repo": "https://github.com/Laumerz84/updater.git",
+      "folder": "Updater",
+      "about": "Checks these programs for updates once a day and installs them.",
+      "launcher": "updater_entry"
+    },
+    {
+      "name": "UtilityBelt",
+      "repo": "https://github.com/Laumerz84/utilitybelt.git",
+      "folder": "utilitybelt",
+      "about": "Terminal dashboard for your PC and your Claude Code work.",
+      "setup": "pip",
+      "launcher": "utilitybelt_entry"
+    },
+    {
+      "name": "UI Report Tool",
+      "repo": "https://github.com/Laumerz84/ui-report-tool.git",
+      "folder": "ui-report-tool",
+      "about": "Annotated screenshots for Claude Code, from the tray.",
+      "setup": "venv",
+      "launcher": "ui_report_entry"
+    },
+    {
+      "name": "Ekxel",
+      "repo": "https://github.com/Laumerz84/sheets.git",
+      "folder": "sheets",
+      "about": "Excel-style spreadsheet with a Claude chat panel.",
+      "setup": "venv",
+      "doctor": "tools/doctor.py",
+      "launcher": "ekxel_entry"
+    },
+    {
+      "name": "Codebase Dashboard",
+      "repo": "https://github.com/Laumerz84/codebase-dashboard.git",
+      "folder": "codebase-dashboard",
+      "about": "Code stats and git activity for a folder, in your browser.",
+      "launcher": "dashboard_entry"
+    }
+  ]
+}

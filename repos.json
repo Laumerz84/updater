@@ -1,5 +1,5 @@
 {
-  "_help": "Every GitHub clone in the Python folder is checked automatically. 'extra' adds clones kept elsewhere; 'ignore' skips Python-folder clones by folder name.",
-  "extra": ["~/Sheets"],
+  "_help": "Every GitHub clone in the Python folder is checked automatically. Put this PC's own additions in repos.local.json (same shape, not in git): 'extra' adds clones kept elsewhere; 'ignore' skips Python-folder clones by folder name.",
+  "extra": [],
   "ignore": []
 }

@@ -1,7 +1,7 @@
 """Updater: keeps the GitHub clones on this computer up to date.
 
 Every folder in the Python folder that is a git clone of a GitHub repo, plus any folder listed
-under "extra" in repos.json, is checked once a day: fetch, then compare the checked-out branch
+under "extra" in repos.local.json, is checked once a day: fetch, then compare the checked-out branch
 with its copy on GitHub. When GitHub has commits this computer does not, a window lists them and
 offers to install them.
 
@@ -41,6 +41,7 @@ from typing import Optional
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent                      # the Python folder: every clone in it is checked
 CONFIG = HERE / "repos.json"
+LOCAL_CONFIG = HERE / "repos.local.json"   # this PC's own additions; not in git
 DATA = Path(os.environ.get("LOCALAPPDATA") or HERE) / "Updater"
 STATE = DATA / "state.json"
 LOG = DATA / "updater.log"
@@ -156,11 +157,11 @@ class Repo:
 
 
 def discover() -> list[Repo]:
-    """Every GitHub clone in the Python folder, plus repos.json "extra", minus "ignore"."""
-    config = load_json(CONFIG)
-    ignore = {name.lower() for name in config.get("ignore", [])}
+    """Every GitHub clone in the Python folder, plus "extra", minus "ignore" (repos.json and repos.local.json)."""
+    configs = [load_json(CONFIG), load_json(LOCAL_CONFIG)]
+    ignore = {name.lower() for c in configs for name in c.get("ignore", [])}
     folders = sorted((p for p in ROOT.iterdir() if p.is_dir()), key=lambda p: p.name.lower())
-    folders += [Path(os.path.expandvars(os.path.expanduser(p))) for p in config.get("extra", [])]
+    folders += [Path(os.path.expandvars(os.path.expanduser(p))) for c in configs for p in c.get("extra", [])]
     repos, seen = [], set()
     for folder in folders:
         if folder.name.lower() in ignore or not (folder / ".git").exists():
@@ -274,20 +275,26 @@ def install(repo: Repo, rebuild: bool) -> tuple[bool, str]:
 
 
 # --------------------------------------------------------------------------- Startup shortcut
+def write_shortcut(lnk: Path, target: str, args: str, folder: Path, description: str, icon: str = "") -> None:
+    """Create or refresh a .lnk. Values go in through the environment so paths with spaces need no quoting."""
+    script = ("$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:UPD_LNK); "
+              "$s.TargetPath = $env:UPD_TARGET; $s.Arguments = $env:UPD_ARGS; "
+              "$s.WorkingDirectory = $env:UPD_DIR; $s.Description = $env:UPD_DESC; "
+              "if ($env:UPD_ICON) { $s.IconLocation = $env:UPD_ICON }; $s.Save()")
+    env = dict(os.environ, UPD_LNK=str(lnk), UPD_TARGET=target, UPD_ARGS=args, UPD_DIR=str(folder),
+               UPD_DESC=description, UPD_ICON=icon)
+    lnk.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], env=env,
+                   check=True, capture_output=True, creationflags=NO_WINDOW)
+
+
 def set_startup(on: bool) -> None:
     if not on:
         STARTUP_LNK.unlink(missing_ok=True)
         log("startup shortcut removed")
         return
-    # Values go in through the environment so paths with spaces need no quoting.
-    script = ("$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:UPD_LNK); "
-              "$s.TargetPath = $env:UPD_TARGET; $s.Arguments = $env:UPD_ARGS; "
-              "$s.WorkingDirectory = $env:UPD_DIR; "
-              "$s.Description = 'Checks the GitHub clones for updates once a day'; $s.Save()")
-    env = dict(os.environ, UPD_LNK=str(STARTUP_LNK), UPD_TARGET=windowless_python(),
-               UPD_ARGS=f'"{Path(__file__).resolve()}" --background', UPD_DIR=str(HERE))
-    subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], env=env,
-                   check=True, capture_output=True, creationflags=NO_WINDOW)
+    write_shortcut(STARTUP_LNK, windowless_python(), f'"{Path(__file__).resolve()}" --background', HERE,
+                   "Checks the GitHub clones for updates once a day")
     log("startup shortcut created")
     # Start the checker now too, so the daily check runs without logging off first.
     # A second copy exits at once if one is already running.
@@ -313,6 +320,9 @@ class Window:
         self.header.pack(anchor="w", padx=12, pady=(10, 4))
         self.body = ttk.Frame(self.root)
         self.body.pack(fill="both", expand=True, padx=12)
+        self.programs = ttk.Frame(self.root)
+        self.programs.pack(fill="x", padx=12, pady=(12, 0))
+        self.program_btns: list = []
 
         bottom = ttk.Frame(self.root)
         bottom.pack(fill="x", padx=12, pady=10)
@@ -334,6 +344,8 @@ class Window:
         if repos is None:
             self.header.config(text="Checking GitHub for updates...")
             self.recheck()
+        else:
+            self.render_programs(survey_programs(repos))
         self.root.after(200, self.poll)
 
     def render(self, repos: list[Repo]) -> None:
@@ -394,9 +406,65 @@ class Window:
         self.body.columnconfigure(0, weight=1)
         self.install_btn.state(["!disabled"] if updates else ["disabled"])
 
+    def render_programs(self, listing) -> None:
+        """The recommended programs (installed or not, App Launcher card or not) and the other clones."""
+        ttk = self.ttk
+        for child in self.programs.winfo_children():
+            child.destroy()
+        self.program_btns = []
+        if listing is None:
+            return
+        catalog, others = listing
+        ttk.Separator(self.programs).grid(row=0, column=0, columnspan=4, sticky="ew", pady=(0, 6))
+        ttk.Label(self.programs, text="Recommended programs", font=("Segoe UI", 10, "bold")
+                  ).grid(row=1, column=0, columnspan=4, sticky="w")
+        row = 2
+        for program in catalog:
+            ttk.Label(self.programs, text=program.name).grid(row=row, column=0, sticky="w", padx=(0, 10))
+            ttk.Label(self.programs, text=program.about, foreground="#555555").grid(row=row, column=1, sticky="w")
+            ttk.Label(self.programs, text=program.status,
+                      foreground="#555555" if program.status == "installed" else "#9a3412"
+                      ).grid(row=row, column=2, sticky="w", padx=10)
+            action = "Install" if program.path is None else "Add card" if program.status != "installed" else ""
+            if action:
+                btn = ttk.Button(self.programs, text=action, command=lambda p=program: self.install_program(p))
+                btn.grid(row=row, column=3, sticky="e", pady=1)
+                self.program_btns.append(btn)
+            row += 1
+        if others:
+            with_card = [c.name for c in others if c.card]
+            without = [c.name for c in others if not c.card]
+            parts = ([f"in the App Launcher: {', '.join(with_card)}"] if with_card else []) + \
+                    ([f"not in the App Launcher: {', '.join(without)}"] if without else [])
+            ttk.Label(self.programs, text="Your other GitHub clones - " + "; ".join(parts), wraplength=600,
+                      justify="left", foreground="#555555").grid(row=row, column=0, columnspan=4, sticky="w",
+                                                                 pady=(6, 0))
+        self.programs.columnconfigure(1, weight=1)
+        if self.busy:
+            for btn in self.program_btns:
+                btn.state(["disabled"])
+
+    def install_program(self, chosen) -> None:
+        self.set_busy(True, f"Installing {chosen.name}... (setting up its libraries can take a few minutes)")
+
+        def work() -> None:
+            import programs
+            try:
+                catalog, _ = programs.survey()     # afresh: the App Launcher may have been installed meanwhile
+                program = next(p for p in catalog if p.name == chosen.name)
+                ok, message = programs.install(program, programs.launcher_of(catalog))
+            except Exception as exc:
+                ok, message = False, f"{type(exc).__name__}: {exc}"
+                log(f"install {chosen.name}: {traceback.format_exc()}")
+            log(f"result {chosen.name}: {'OK' if ok else 'PROBLEM'} - {message}")
+            self.events.put(("installed", [f"{chosen.name}: {message}"]))
+            self.events.put(("checked", check_all()))
+
+        threading.Thread(target=work, daemon=True).start()
+
     def set_busy(self, busy: bool, text: str = "") -> None:
         self.busy = busy
-        for btn in (self.install_btn, self.check_btn, self.close_btn):
+        for btn in (self.install_btn, self.check_btn, self.close_btn, *self.program_btns):
             btn.state(["disabled"] if busy else ["!disabled"])
         if not busy and not self.picks:
             self.install_btn.state(["disabled"])
@@ -442,6 +510,7 @@ class Window:
                     save_state(last_check=dt.date.today().isoformat())
                     self.render(value)
                     self.set_busy(False)
+                    self.render_programs(survey_programs(value))
         except queue.Empty:
             pass
         self.root.after(200, self.poll)
@@ -463,6 +532,16 @@ class Window:
 
 
 # --------------------------------------------------------------------------- modes
+def survey_programs(repos: list[Repo]):
+    """programs.survey(repos), or None if it fails: the Programs list must never stop the update check."""
+    try:
+        import programs
+        return programs.survey(repos)
+    except Exception:
+        log("programs survey failed:\n" + traceback.format_exc())
+        return None
+
+
 def record_check(repos: list[Repo]) -> None:
     # Offline (every repo failed to fetch) does not count as today's check: try again later.
     if repos and all(r.status == "error" for r in repos):
