@@ -37,7 +37,11 @@ when everything that could be installed is. A program in a private repository yo
 to is skipped and named. Run it again any time; it only does what is still missing.
 `python install.py --list` shows the state and changes nothing.
 
-To hand it to someone else's Claude Code, give them this:
+To hand it to someone else's Claude Code, the short way is one line:
+
+> Read https://github.com/Laumerz84/updater/blob/main/CLAUDE-SETUP.md and follow it.
+
+[`CLAUDE-SETUP.md`](CLAUDE-SETUP.md) has the whole procedure for Claude: checks, what to ask the person before downloading anything, the GitHub sign-in for the private programs, running the installer (outside the Claude desktop app's sandbox), and what to report. The longer prompt below does the same without asking:
 
 > Install the GitHub Updater and its recommended programs, without asking me anything.
 > Use the folder that already holds my GitHub clones; if there is none, create `%USERPROFILE%\Python`.
@@ -68,6 +72,7 @@ Double-click `updater.py` to check now and see the window.
 | `updater.py --startup off` | Remove it |
 | `install.py` | Install the recommended programs that are missing, and turn on the daily check |
 | `install.py --list` | Show what is installed, change nothing |
+| `install.py --skip Clipper` | Leave a program out (repeatable; not the App Launcher or the Updater) |
 
 ## Settings
 

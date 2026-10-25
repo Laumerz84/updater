@@ -5,6 +5,7 @@ your projects: the recommended programs are cloned next to it.
 
     install.py          install everything that is missing (double-click, or let Claude run it)
     install.py --list   show what is installed and what is not, change nothing
+    install.py --skip Clipper --skip Ekxel   leave programs out (not the App Launcher or the Updater)
 
 For each program in catalog.json, in order: clone it if missing, install its libraries, make its Start
 menu shortcut, add its App Launcher card. Then turn on the Updater's daily check at login. A program
@@ -54,7 +55,10 @@ def show(catalog: list[programs.Program], others: list[programs.Clone]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Install the GitHub Updater and the recommended programs.")
     parser.add_argument("--list", action="store_true", help="show what is installed, change nothing")
+    parser.add_argument("--skip", action="append", default=[], metavar="NAME",
+                        help="leave out a program (its name or folder, e.g. --skip Clipper); repeatable")
     args = parser.parse_args()
+    skip = {s.strip().lower() for item in args.skip for s in item.split(",") if s.strip()}
 
     problems = preflight()
     if problems:
@@ -68,6 +72,10 @@ def main() -> int:
 
     failed, skipped = [], []
     for program in catalog:
+        if {program.name.lower(), program.folder.lower()} & skip and program.role != "launcher"                 and program.folder.lower() != "updater":
+            print(f"Skipping {program.name} (--skip)")
+            skipped.append(f"{program.name}: left out with --skip")
+            continue
         action = "Installing" if program.path is None else "Checking"
         print(f"{action} {program.name}...", flush=True)
         launcher = programs.launcher_of(catalog)
