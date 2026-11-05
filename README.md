@@ -41,7 +41,7 @@ To hand it to someone else's Claude Code, the short way is one line:
 
 > Read https://github.com/Laumerz84/updater/blob/main/CLAUDE-SETUP.md and follow it.
 
-[`CLAUDE-SETUP.md`](CLAUDE-SETUP.md) has the whole procedure for Claude: checks, what to ask the person before downloading anything, the GitHub sign-in for the private programs, running the installer (outside the Claude desktop app's sandbox), and what to report. The longer prompt below does the same without asking:
+[`CLAUDE-SETUP.md`](CLAUDE-SETUP.md) has the whole procedure for Claude: checks, what to ask the person before downloading anything, the GitHub sign-in for the private programs, running the installer (in the Claude desktop app, the person runs that one step themselves), and what to report. The longer prompt below does the same without asking:
 
 > Install the GitHub Updater and its recommended programs, without asking me anything.
 > Use the folder that already holds my GitHub clones; if there is none, create `%USERPROFILE%\Python`.

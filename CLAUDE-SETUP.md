@@ -75,20 +75,18 @@ Show them the table above (shortened is fine), then ask together:
 4. Run `python Updater\install.py` (plus any `--skip`) from the main folder. It asks nothing, takes a few minutes, and ends
    with a "Result" list.
    **If you are the Claude desktop app** (your shell runs inside its sandbox, e.g. `%APPDATA%` writes
-   land under `...\Packages\Claude_*\LocalCache\`), run it outside the sandbox. Otherwise pip installs,
-   settings and the daily checker go into a private copy that the person's own apps never see:
+   land under `...\Packages\Claude_*\LocalCache\`), do not run install.py yourself: pip installs,
+   settings and the daily checker would go into a private copy that the person's own apps never see.
+   Do not try to start it outside the sandbox either (no `Invoke-CimMethod`, `Start-Process` tricks or
+   `cmd.exe`; many work PCs block cmd.exe on purpose). Hand this one step to the person instead:
+   - Nothing to leave out: ask them to double-click `<main folder>\Updater\Install.pyw` and press
+     **Install**. It uses that Updater and shows install.py's output in its window.
+   - With `--skip`: give them the exact command to paste into their own PowerShell window (Start menu >
+     Windows PowerShell), e.g. `cd "<main folder>\Updater"; python install.py --skip Clipper`.
 
-   ```powershell
-   $py = "<full path to python.exe, not the WindowsApps alias>"
-   $cmd = "cmd.exe /c cd /d `"<main folder>\Updater`" && `"$py`" install.py > install-log.txt 2>&1 < nul"
-   Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{CommandLine=$cmd}
-   ```
-
-   Wait until `install-log.txt` ends with "Log:" and the process is gone, then read the file.
-   (Where `.cmd` files are blocked, `cmd.exe /c` used like this still works. Or give the person
-   `Updater\Install.pyw` to double-click instead: it shows the same output in a window.)
-5. Exit code 0 / "Install finished" = done. On "Needs attention" lines, fix what you can (a missing
-   tool, a failed pip install: rerun install.py, since it only does what is still missing) and report
+   Then ask them to paste the "Result" list back to you (or send a screenshot of it).
+5. "Install finished" (exit code 0) = done. On "Needs attention" lines, fix what you can (a missing
+   tool) and have install.py run again the same way, since it only does what is still missing; report
    the rest.
 
 ## 6. Report back
