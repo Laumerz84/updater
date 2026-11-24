@@ -53,6 +53,7 @@ POLL_SECONDS = 30 * 60      # the background checker wakes this often to see if 
 FETCH_TIMEOUT = 60
 BUILD_TIMEOUT = 30 * 60
 NEW_TITLES = 5              # commit titles shown per repo
+LOCAL_ONLY = "is not tracking a branch on GitHub"   # a branch that exists only on this PC
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
@@ -190,7 +191,7 @@ def check(repo: Repo) -> Repo:
             return repo
         code, repo.upstream, _ = git(repo.folder, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
         if code:
-            repo.problem = f"branch {repo.branch} is not tracking a branch on GitHub"
+            repo.problem = f"branch {repo.branch} {LOCAL_ONLY}"
             return repo
         _, counts, _ = git(repo.folder, "rev-list", "--left-right", "--count", "HEAD...@{u}")
         repo.ahead, repo.behind = (int(n) for n in counts.split())
@@ -317,15 +318,12 @@ class Window:
         self.busy = False
 
         self.header = ttk.Label(self.root, font=("Segoe UI", 10, "bold"))
-        self.header.pack(anchor="w", padx=12, pady=(10, 4))
-        self.body = ttk.Frame(self.root)
-        self.body.pack(fill="both", expand=True, padx=12)
-        self.programs = ttk.Frame(self.root)
-        self.programs.pack(fill="x", padx=12, pady=(12, 0))
-        self.program_btns: list = []
+        self.header.pack(side="top", anchor="w", padx=12, pady=(10, 4))
 
+        # The buttons are packed before the list, at the bottom, so a long list can never push them
+        # off the window; the list and the programs panel scroll instead.
         bottom = ttk.Frame(self.root)
-        bottom.pack(fill="x", padx=12, pady=10)
+        bottom.pack(side="bottom", fill="x", padx=12, pady=10)
         self.startup = tk.BooleanVar(value=STARTUP_LNK.exists())
         ttk.Checkbutton(bottom, text="Check daily at login", variable=self.startup,
                         command=self.toggle_startup).pack(side="left")
@@ -338,7 +336,27 @@ class Window:
         self.install_btn = ttk.Button(bottom, text="Install selected", command=self.install_selected)
         self.install_btn.pack(side="right", padx=4)
         self.progress = ttk.Label(self.root, foreground="#555555")
-        self.progress.pack(anchor="w", padx=12, pady=(0, 8))
+        self.progress.pack(side="bottom", anchor="w", padx=12, pady=(0, 0))
+
+        scroll_area = ttk.Frame(self.root)
+        scroll_area.pack(side="top", fill="both", expand=True, padx=(12, 0))
+        bg = ttk.Style().lookup("TFrame", "background") or self.root.cget("background")
+        self.canvas = tk.Canvas(scroll_area, highlightthickness=0, borderwidth=0, background=bg)
+        bar = ttk.Scrollbar(scroll_area, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=bar.set)
+        bar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+        inner = ttk.Frame(self.canvas)
+        inner_id = self.canvas.create_window(0, 0, window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(inner_id, width=e.width - 12))
+        self.root.bind_all("<MouseWheel>", self.on_wheel)
+        self.body = ttk.Frame(inner)
+        self.body.pack(fill="x")
+        self.programs = ttk.Frame(inner)
+        self.programs.pack(fill="x", pady=(12, 0))
+        self.program_btns: list = []
+        self.show_local = False
 
         self.render(repos or [])
         if repos is None:
@@ -395,16 +413,42 @@ class Window:
             row += 1
             titles(repo)
 
+        # Clones on a branch that only exists here (worktrees, experiments) are not a problem to act on:
+        # one quiet line, click to see them. Real errors stay in full.
+        local = [r for r in errors if r.problem.endswith(LOCAL_ONLY)]
         for repo in errors:
+            if repo in local:
+                continue
             ttk.Label(self.body, text=f"{repo.name}: {repo.problem}", foreground="#b91c1c", wraplength=600,
                       justify="left").grid(row=row, column=0, columnspan=2, sticky="w", pady=(6, 0))
             row += 1
+        if local:
+            arrow = "▾" if self.show_local else "▸"
+            toggle = ttk.Label(self.body, foreground="#555555", cursor="hand2",
+                               text=f"{arrow} {len(local)} local branch(es) with no GitHub branch "
+                                    f"(click to {'hide' if self.show_local else 'show'})")
+            toggle.grid(row=row, column=0, columnspan=2, sticky="w", pady=(6, 0))
+            toggle.bind("<Button-1>", lambda e: self.toggle_local())
+            row += 1
+            if self.show_local:
+                text = "\n".join(f"    {r.name}  [{r.branch}]" for r in sorted(local, key=lambda r: r.name.lower()))
+                ttk.Label(self.body, text=text, foreground="#555555", font=("Consolas", 9),
+                          justify="left").grid(row=row, column=0, columnspan=2, sticky="w")
+                row += 1
 
         if current:
             ttk.Label(self.body, text="Up to date: " + ", ".join(r.name for r in current), wraplength=600,
                       justify="left").grid(row=row, column=0, columnspan=2, sticky="w", pady=(10, 0))
         self.body.columnconfigure(0, weight=1)
         self.install_btn.state(["!disabled"] if updates else ["disabled"])
+
+    def toggle_local(self) -> None:
+        self.show_local = not self.show_local
+        self.render(self.repos)
+
+    def on_wheel(self, event) -> None:
+        if self.canvas.yview() != (0.0, 1.0):          # only when there is something to scroll
+            self.canvas.yview_scroll(int(-event.delta / 120), "units")
 
     def render_programs(self, listing) -> None:
         """The recommended programs (installed or not, App Launcher card or not) and the other clones."""
